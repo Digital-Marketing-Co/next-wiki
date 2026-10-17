@@ -21,7 +21,11 @@ export async function scanVault(
   onSkip?: (sourcePath: string, reason: 'too_large' | 'changed_during_scan' | 'unreadable' | 'empty') => void,
   additionalExcludedNames?: Iterable<string>,
 ): Promise<VaultDocument[]> {
+  if (!Number.isSafeInteger(maxBytes) || maxBytes <= 0) throw new Error('maxBytes must be a positive integer');
   const root = await resolve(vaultPath);
+  const rootStat = await lstat(root);
+  if (rootStat.isSymbolicLink()) throw new Error('Symlinks are not allowed in the Memory Wiki vault root');
+  if (!rootStat.isDirectory()) throw new Error('Vault path must be a directory');
   const excludedNames = additionalExcludedNames ? new Set([...EXCLUDED, ...additionalExcludedNames]) : EXCLUDED;
   const documents: VaultDocument[] = [];
   async function walk(directory: string): Promise<void> {
@@ -53,7 +57,10 @@ export async function scanVault(
       let stat;
       try { stat = await lstat(fullPath); }
       catch { onSkip?.(sourcePath, 'unreadable'); continue; }
-      if (stat.isSymbolicLink()) throw new Error(`Symlinks are not allowed in the Memory Wiki vault: ${sourcePath}`);
+      if (stat.isSymbolicLink()) {
+        onSkip?.(sourcePath, 'unreadable');
+        continue;
+      }
       // Check permission bits as well as the read operation. Test and container
       // environments may run as root, whose privileges would otherwise hide a
       // locally unreadable file or directory from the scanner.

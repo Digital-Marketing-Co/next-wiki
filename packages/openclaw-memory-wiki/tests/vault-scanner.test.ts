@@ -24,11 +24,14 @@ describe('scanVault', () => {
     expect(docs[1]?.sourceDigest).toMatch(/^[a-f0-9]{64}$/);
   });
 
-  it('rejects symlinks instead of following them outside the vault', async () => {
+  it('skips symlinks instead of following them outside the vault', async () => {
     const root = await mkdtemp(join(tmpdir(), 'memory-wiki-link-'));
     await writeFile(join(root, 'safe.md'), 'safe');
     await symlink(join(root, 'safe.md'), join(root, 'linked.md'));
-    await expect(scanVault(root)).rejects.toThrow('Symlinks are not allowed');
+    const warnings: Array<[string, string]> = [];
+    const docs = await scanVault(root, 512_000, (sourcePath, reason) => warnings.push([sourcePath, reason]));
+    expect(docs.map((doc) => doc.sourcePath)).toEqual(['safe.md']);
+    expect(warnings).toEqual([['linked.md', 'unreadable']]);
   });
 
   it('skips oversized files with a warning instead of aborting the scan', async () => {
@@ -117,12 +120,19 @@ describe('scanVault', () => {
     expect(docs.map((d) => d.sourcePath)).not.toContain('entities/dreaming.jsonl');
   });
 
-  it('rejects nested symlinks and reports the full sourcePath', async () => {
+  it('skips nested symlinks and reports the full sourcePath', async () => {
     const root = await fixture();
     await mkdir(join(root, 'entities', 'nested'), { recursive: true });
     await writeFile(join(root, 'entities', 'nested', 'safe.md'), 'safe');
     await symlink(join(root, 'entities', 'nested', 'safe.md'), join(root, 'entities', 'nested', 'linked.md'));
-    await expect(scanVault(root)).rejects.toThrow(/entities\/nested\/linked\.md/);
+    const warnings: Array<[string, string]> = [];
+    const docs = await scanVault(root, 512_000, (sourcePath, reason) => warnings.push([sourcePath, reason]));
+    expect(docs.map((doc) => doc.sourcePath)).toContain('entities/nested/safe.md');
+    expect(warnings).toContainEqual(['entities/nested/linked.md', 'unreadable']);
+  });
+
+  it('rejects a non-positive file limit', async () => {
+    await expect(scanVault(await fixture(), 0)).rejects.toThrow('maxBytes must be a positive integer');
   });
 
   it('exports DEFAULT_MAX_FILE_BYTES at 512_000', () => {
