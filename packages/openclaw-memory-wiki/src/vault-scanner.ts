@@ -54,8 +54,20 @@ export async function scanVault(
       try { stat = await lstat(fullPath); }
       catch { onSkip?.(sourcePath, 'unreadable'); continue; }
       if (stat.isSymbolicLink()) throw new Error(`Symlinks are not allowed in the Memory Wiki vault: ${sourcePath}`);
-      if (stat.isDirectory()) { await walk(fullPath); continue; }
+      // Check permission bits as well as the read operation. Test and container
+      // environments may run as root, whose privileges would otherwise hide a
+      // locally unreadable file or directory from the scanner.
+      if (stat.isDirectory()) {
+        if ((stat.mode & 0o555) === 0) {
+          console.warn(`[next-wiki-memory-wiki] skipping unreadable subdirectory ${sourcePath}`);
+          onSkip?.(sourcePath, 'unreadable');
+          continue;
+        }
+        await walk(fullPath);
+        continue;
+      }
       if (!stat.isFile() || !entry.name.toLowerCase().endsWith('.md')) continue;
+      if ((stat.mode & 0o444) === 0) { onSkip?.(sourcePath, 'unreadable'); continue; }
       if (stat.size > maxBytes) { onSkip?.(sourcePath, 'too_large'); continue; }
       let content;
       try { content = await readFile(fullPath, 'utf8'); }
