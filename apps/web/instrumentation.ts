@@ -11,6 +11,9 @@
 export async function register() {
   // Guard against the edge runtime, where the postgres driver cannot load.
   if (process.env.NEXT_RUNTIME !== 'nodejs') return;
+  // Vercel functions must not run persistent database workers or startup migrations.
+  // These belong in an explicit migration job and a durable worker service.
+  if (process.env.VERCEL === '1') return;
 
   const { runMigrations } = await import('./src/server/db/migrate');
   const { seedDatabase, seedE2eAdminFixture } = await import('./src/server/seed');
