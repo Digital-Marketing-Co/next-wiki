@@ -1,25 +1,61 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalPassThroughEnv": [
+    "DATABASE_URL",
+    "API_KEY_ENCRYPTION_KEY",
+    "DATABASE_URL_UNPOOLED",
+    "POSTGRES_URL",
+    "POSTGRES_PRISMA_URL",
+    "POSTGRES_URL_NON_POOLING",
+    "POSTGRES_URL_NO_SSL",
+    "POSTGRES_PASSWORD",
+    "POSTGRES_DATABASE",
+    "POSTGRES_USER",
+    "POSTGRES_HOST",
+    "PGHOST",
+    "PGHOST_UNPOOLED",
+    "PGDATABASE",
+    "PGUSER",
+    "PGPASSWORD",
+    "NEON_PROJECT_ID",
+    "NEON_AUTH_BASE_URL",
+    "VITE_NEON_AUTH_URL"
+  ],
   "tasks": {
     "build": {
-      "dependsOn": ["^build", "build:static-site-assets"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+      "dependsOn": [
+        "^build",
+        "build:static-site-assets"
+      ],
+      "outputs": [
+        ".next/**",
+        "!.next/cache/**",
+        "dist/**"
+      ]
     },
     "build:static-site-assets": {
-      "outputs": ["public/static-site/**"]
+      "outputs": [
+        "public/static-site/**"
+      ]
     },
     "dev": {
       "cache": false,
       "persistent": true
     },
     "lint": {
-      "dependsOn": ["^build"]
+      "dependsOn": [
+        "^build"
+      ]
     },
     "typecheck": {
-      "dependsOn": ["^build"]
+      "dependsOn": [
+        "^build"
+      ]
     },
     "test": {
-      "dependsOn": ["^build"],
+      "dependsOn": [
+        "^build"
+      ],
       "outputs": []
     }
   }
